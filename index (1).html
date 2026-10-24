@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://*.supabase.co; img-src data:;">
+<title>গোপন নোট</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1c2430;--mute:#667085;--line:#dde2ea;--bg:#eef1f5;--panel:#fff;--accent:#0d6b73;--accent-ink:#fff;--danger:#b42318}
+@media (prefers-color-scheme:dark){:root{--ink:#e7ebf1;--mute:#98a2b3;--line:#2c3644;--bg:#11161d;--panel:#18202a;--accent:#4fb8c0;--accent-ink:#06262a;--danger:#f97066}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:16px/1.6 'Hind Siliguri',system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:.5rem .9rem}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.danger{color:var(--danger)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,textarea{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:.6rem .75rem}
+.hidden{display:none!important}
+
+/* লগইন */
+#login{min-height:100%;display:grid;place-items:center;padding:1.5rem}
+#login form{width:100%;max-width:360px;display:grid;gap:.9rem}
+#login h1{margin:0;font-size:1.8rem;font-weight:600}
+#login p{margin:0;color:var(--mute);font-size:.92rem}
+#login label{display:grid;gap:.25rem;font-weight:500;font-size:.92rem}
+#msg{min-height:1.4em;color:var(--danger);font-size:.92rem}
+.linkbtn{border:0;background:none;color:var(--accent);padding:0;text-decoration:underline}
+
+/* অ্যাপ */
+#app{height:100%;display:grid;grid-template-columns:320px 1fr}
+aside{border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+.bar{display:flex;gap:.5rem;padding:.75rem;border-bottom:1px solid var(--line)}
+.bar input{flex:1}
+#list{overflow:auto;flex:1;margin:0;padding:0;list-style:none}
+#list li{padding:.7rem .9rem;border-bottom:1px solid var(--line);cursor:pointer}
+#list li[aria-current=true]{background:var(--bg);box-shadow:inset 3px 0 var(--accent)}
+#list b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#list small{color:var(--mute)}
+#empty{padding:1.2rem;color:var(--mute)}
+main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.top{display:flex;gap:.5rem;align-items:center;padding:.75rem;border-bottom:1px solid var(--line);background:var(--panel)}
+.top .sp{flex:1;color:var(--mute);font-size:.9rem}
+#title{border:0;border-radius:0;font-size:1.4rem;font-weight:600;padding:1rem 1rem .4rem;background:transparent}
+#body{flex:1;border:0;border-radius:0;resize:none;padding:.4rem 1rem 1rem;background:transparent;line-height:1.75}
+#back{display:none}
+@media (max-width:720px){
+  #app{grid-template-columns:1fr}
+  #app:not(.editing) main{display:none}
+  #app.editing aside{display:none}
+  #back{display:inline-block}
+}
+</style>
+</head>
+<body>
+
+<section id="login">
+  <form id="loginForm" autocomplete="off">
+    <h1>গোপন নোট</h1>
+    <p id="intro">ভল্টের নাম ও পাসওয়ার্ড দিয়ে ঢুকুন। ইমেইল লাগবে না।</p>
+    <label>ভল্টের নাম<input id="vault" required minlength="3" autocapitalize="none" spellcheck="false"></label>
+    <label>পাসওয়ার্ড<input id="pass" type="password" required minlength="8" autocomplete="current-password"></label>
+    <div id="msg" role="alert"></div>
+    <button class="primary" id="go">ঢুকুন</button>
+    <button type="button" class="linkbtn" id="toggle">নতুন ভল্ট তৈরি করুন</button>
+  </form>
+</section>
+
+<div id="app" class="hidden">
+  <aside>
+    <div class="bar"><input id="search" type="search" placeholder="নোট খুঁজুন"><button class="primary" id="new">নতুন</button></div>
+    <ul id="list"></ul>
+    <div id="empty" class="hidden">এখনো কোনো নোট নেই। "নতুন" চাপুন।</div>
+  </aside>
+  <main>
+    <div class="top">
+      <button id="back">ফিরুন</button>
+      <span class="sp" id="status"></span>
+      <button class="danger" id="del">মুছুন</button>
+      <button id="lock">লক করুন</button>
+    </div>
+    <input id="title" placeholder="শিরোনাম">
+    <textarea id="body" placeholder="এখানে লিখুন"></textarea>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+// ===== এখানে নিজের Supabase তথ্য বসান =====
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+// ==========================================
+
+const $ = id => document.getElementById(id);
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: true } });
+const enc = new TextEncoder(), dec = new TextDecoder();
+const hex = b => [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+const b64 = b => btoa(String.fromCharCode(...b));
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+let key = null, notes = [], current = null, creating = false, saveTimer, saving = Promise.resolve();
+
+// পাসওয়ার্ড থেকে দুটি আলাদা জিনিস তৈরি হয়: লগইন-সিক্রেট (সার্ভারে যায়) ও এনক্রিপশন-কী (ডিভাইস ছাড়ে না)
+async function derive(vault, password) {
+  const v = vault.trim().toLowerCase();
+  const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('notes-vault-v1:' + v), iterations: 600000 }, base, 512));
+  const id = hex(new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode('id:' + v)))).slice(0, 40);
+  return {
+    email: id + '@vault.example.com',       // শুধু অভ্যন্তরীণ আইডি; আসল ইমেইল নয়
+    authPass: hex(bits.slice(0, 32)),
+    key: await crypto.subtle.importKey('raw', bits.slice(32), 'AES-GCM', false, ['encrypt', 'decrypt'])
+  };
+}
+async function encrypt(obj) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(obj))));
+  return { iv: b64(iv), ciphertext: b64(ct) };
+}
+async function decryptRow(r) {
+  try {
+    const o = JSON.parse(dec.decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(r.iv) }, key, unb64(r.ciphertext))));
+    return { id: r.id, title: o.t || '', body: o.b || '', updated_at: r.updated_at };
+  } catch { return { id: r.id, title: '(খোলা যায়নি)', body: '', updated_at: r.updated_at }; }
+}
+
+// ===== লগইন / নতুন ভল্ট =====
+let signupMode = false;
+$('toggle').onclick = () => {
+  signupMode = !signupMode;
+  $('go').textContent = signupMode ? 'ভল্ট তৈরি করুন' : 'ঢুকুন';
+  $('toggle').textContent = signupMode ? 'আগে থেকেই ভল্ট আছে? ঢুকুন' : 'নতুন ভল্ট তৈরি করুন';
+  $('intro').textContent = signupMode
+    ? 'পাসওয়ার্ড ভুলে গেলে নোট ফেরত পাওয়ার উপায় নেই। লম্বা ও অনন্য পাসওয়ার্ড বেছে নিন।'
+    : 'ভল্টের নাম ও পাসওয়ার্ড দিয়ে ঢুকুন। ইমেইল লাগবে না।';
+  $('pass').autocomplete = signupMode ? 'new-password' : 'current-password';
+  $('msg').textContent = '';
+};
+$('loginForm').onsubmit = async e => {
+  e.preventDefault();
+  $('go').disabled = true; $('msg').textContent = '';
+  $('go').textContent = 'অপেক্ষা করুন…';
+  try {
+    const d = await derive($('vault').value, $('pass').value);
+    const cred = { email: d.email, password: d.authPass };
+    const { error } = signupMode ? await db.auth.signUp(cred) : await db.auth.signInWithPassword(cred);
+    if (error) throw error;
+    if (signupMode) { const r = await db.auth.signInWithPassword(cred); if (r.error) throw r.error; }
+    key = d.key; $('pass').value = '';
+    await start();
+  } catch (err) {
+    $('msg').textContent = signupMode
+      ? 'ভল্ট তৈরি হয়নি। নামটি হয়তো আগে নেওয়া, অন্য নাম চেষ্টা করুন।'
+      : 'ভল্টের নাম বা পাসওয়ার্ড ভুল।';
+  }
+  $('go').disabled = false;
+  $('go').textContent = signupMode ? 'ভল্ট তৈরি করুন' : 'ঢুকুন';
+};
+
+// ===== নোট =====
+async function start() {
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+  const { data, error } = await db.from('notes').select('id,iv,ciphertext,updated_at').order('updated_at', { ascending: false });
+  if (error) { status('নোট আনা যায়নি'); return; }
+  notes = await Promise.all(data.map(decryptRow));
+  current = null; renderList(); showEditor(false);
+}
+function status(t) { $('status').textContent = t; }
+function label(n) { return n.title.trim() || n.body.trim().split('\n')[0] || 'শিরোনামহীন'; }
+function renderList() {
+  const q = $('search').value.trim().toLowerCase();
+  const shown = notes.filter(n => !q || (n.title + '\n' + n.body).toLowerCase().includes(q));
+  const ul = $('list'); ul.replaceChildren();
+  $('empty').classList.toggle('hidden', notes.length > 0);
+  for (const n of shown) {
+    const li = document.createElement('li');
+    const b = document.createElement('b'); b.textContent = label(n);
+    const s = document.createElement('small'); s.textContent = n.updated_at ? new Date(n.updated_at).toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' }) : 'নতুন';
+    li.append(b, s);
+    if (n === current) li.setAttribute('aria-current', 'true');
+    li.onclick = () => open(n);
+    ul.append(li);
+  }
+}
+function showEditor(on) { $('app').classList.toggle('editing', on); }
+function open(n) {
+  current = n; $('title').value = n.title; $('body').value = n.body; status('');
+  renderList(); showEditor(true);
+}
+$('new').onclick = () => {
+  const n = { id: null, title: '', body: '', updated_at: null };
+  notes.unshift(n); open(n); $('title').focus();
+};
+function edited() {
+  if (!current) return;
+  current.title = $('title').value; current.body = $('body').value;
+  status('সেভ হচ্ছে…'); clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { saving = saving.then(() => saveNow(current)); }, 700);
+}
+$('title').oninput = $('body').oninput = edited;
+async function saveNow(n) {
+  if (!n || (!n.title.trim() && !n.body.trim())) { status(''); return; }
+  try {
+    const payload = await encrypt({ t: n.title, b: n.body });
+    if (n.id) {
+      const { data, error } = await db.from('notes').update(payload).eq('id', n.id).select('updated_at').single();
+      if (error) throw error; n.updated_at = data.updated_at;
+    } else {
+      const { data, error } = await db.from('notes').insert(payload).select('id,updated_at').single();
+      if (error) throw error; n.id = data.id; n.updated_at = data.updated_at;
+    }
+    status('সেভ হয়েছে'); renderList();
+  } catch { status('সেভ হয়নি, ইন্টারনেট দেখুন'); }
+}
+$('del').onclick = async () => {
+  if (!current || !confirm('এই নোটটি চিরতরে মুছে যাবে। নিশ্চিত?')) return;
+  const n = current;
+  if (n.id) { const { error } = await db.from('notes').delete().eq('id', n.id); if (error) { status('মোছা যায়নি'); return; } }
+  notes = notes.filter(x => x !== n); current = null; renderList(); showEditor(false);
+};
+$('back').onclick = async () => {
+  clearTimeout(saveTimer); await (saving = saving.then(() => saveNow(current)));
+  if (current && !current.id && !current.title.trim() && !current.body.trim()) notes = notes.filter(x => x !== current);
+  current = null; renderList(); showEditor(false);
+};
+$('search').oninput = renderList;
+$('lock').onclick = async () => {
+  clearTimeout(saveTimer); await (saving = saving.then(() => saveNow(current)));
+  await db.auth.signOut();
+  key = null; notes = []; current = null; $('title').value = $('body').value = '';
+  $('app').classList.add('hidden'); $('login').classList.remove('hidden');
+};
+</script>
+</body>
+</html>
