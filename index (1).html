@@ -206,10 +206,10 @@ async function saveNow(n) {
   try {
     const payload = await encrypt({ t: n.title, b: n.body });
     if (n.id) {
-      const { data, error } = await db.from('notes').update(payload).eq('id', n.id).select('updated_at').single();
+      const { data, error } = await db.from('MhamudRobin').update(payload).eq('id', n.id).select('updated_at').single();
       if (error) throw error; n.updated_at = data.updated_at;
     } else {
-      const { data, error } = await db.from('notes').insert(payload).select('id,updated_at').single();
+      const { data, error } = await db.from('MhamudRobin').insert(payload).select('id,updated_at').single();
       if (error) throw error; n.id = data.id; n.updated_at = data.updated_at;
     }
     status('সেভ হয়েছে'); renderList();
@@ -218,7 +218,7 @@ async function saveNow(n) {
 $('del').onclick = async () => {
   if (!current || !confirm('এই নোটটি চিরতরে মুছে যাবে। নিশ্চিত?')) return;
   const n = current;
-  if (n.id) { const { error } = await db.from('notes').delete().eq('id', n.id); if (error) { status('মোছা যায়নি'); return; } }
+  if (n.id) { const { error } = await db.from('MhamudRobin').delete().eq('id', n.id); if (error) { status('মোছা যায়নি'); return; } }
   notes = notes.filter(x => x !== n); current = null; renderList(); showEditor(false);
 };
 $('back').onclick = async () => {
