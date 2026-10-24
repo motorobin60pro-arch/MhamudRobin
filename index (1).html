@@ -163,7 +163,7 @@ $('loginForm').onsubmit = async e => {
 // ===== নোট =====
 async function start() {
   $('login').classList.add('hidden'); $('app').classList.remove('hidden');
-  const { data, error } = await db.from('notes').select('id,iv,ciphertext,updated_at').order('updated_at', { ascending: false });
+  const { data, error } = await db.from('MhamudRobin').select('id,iv,ciphertext,updated_at').order('updated_at', { ascending: false });
   if (error) { status('নোট আনা যায়নি'); return; }
   notes = await Promise.all(data.map(decryptRow));
   current = null; renderList(); showEditor(false);
